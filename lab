@@ -1,0 +1,91 @@
+#!/bin/bash
+
+TIMEZONE=$(cat /etc/timezone)
+
+# Docker dependency check
+
+if ! command -v docker &> /dev/null
+then
+    echo "Installing Docker"
+    curl -sSL https://get.docker.com/ | sh
+    sudo usermod -aG docker $USER
+    newgrp docker
+fi
+
+
+function help {
+
+    echo -e "Command Usage : lab <Vuln. App> <start/stop>\n"
+    echo -e "Choose what Vulnerable Web Application would you like to Run : \n\n"
+cat << EOF
+    webgoat             WebGoat is a deliberately insecure application that allows 
+                        interested developers just like you to test vulnerabilities 
+                        commonly found in Java-based applications that use common 
+                        and popular open source components.
+    
+    juice-shop          WASP Juice Shop is probably the most modern and sophisticated
+                        insecure web application! It can be used in security trainings,
+                        awareness demos, CTFs and as a guinea pig for security tools!
+
+    pygoat              The purpose is to give both developers and testers a platform
+                        for learning how to test applications and how to code securely.
+                        PyGoat is written in python and used Django web framework as 
+                        a platform. It has both traditional web application 
+                        vulnerabilities (i.e. XSS, SQLi) as well.
+    
+    bwapp               bWAPP, or a buggy web application, is a free and open source 
+                        deliberately insecure web application. It helps security 
+                        enthusiasts, developers and students to discover and to prevent 
+                        web vulnerabilities.
+    
+    wrongsecrets        OWASP WrongSecrets is the first Secrets Management-focused 
+                        vulnerable/p0wnable app! It can be used in security trainings,
+                        awareness demos, as a test environment for secret detection 
+                        tools, and bad practice detection tooling.
+
+EOF
+
+}
+
+while [ $# -gt 0 ]; do
+  case $1 in
+    -h|--help)
+      help
+      exit 0
+      ;;
+    webgoat)        
+      [ ! "$(docker ps -a | grep webgoat)" ] && docker run -d --name webgoat -p 8080:8080 -p 9090:9090 -e TZ=$TIMEZONE webgoat/webgoat
+      exit 0
+      ;;
+    juice-shop)
+      [ ! "$(docker ps -a | grep juice-shop)" ] && docker run -d --name juice-shop -p 3000:3000 bkimminich/juice-shop
+      exit 0
+      ;;
+    pygoat)
+      [ ! "$(docker ps -a | grep pygoat)" ] && docker run -d --name pygoat -p 8000:8000 pygoat/pygoat
+      exit 0
+      ;;
+    bwapp)
+      [ ! "$(docker ps -a | grep bwapp)" ] && docker run -d --name bwapp -p 8090:80 hackersploit/bwapp-docker
+      exit 0
+      ;;
+    wrongsecrets)
+      [ ! "$(docker ps -a | grep wrongsecrets)" ] && docker run -d --name wrongsecrets -p 8070:8080 jeroenwillemsen/wrongsecrets:latest-no-vault
+      exit 0
+      ;;
+    *)
+      echo "$1 not a Valid Web Application"
+      help
+      exit 1
+      ;;
+  esac
+done
+
+if [[ $2 == "start" ]];then
+  [ ! "$(docker ps -a | grep $1)" ] && docker start $1
+
+elif [[ $2 == "stop" ]];then
+  [ ! "$(docker ps -a | grep $1)" ] && docker stop $1
+else
+  echo "Web application $1 does not exist"
+fi
